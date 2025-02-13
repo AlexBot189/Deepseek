@@ -74,5 +74,88 @@ https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 部署量化后的模型
-1、使用llama.cpp框架来运行量化后的模型
+1、手动量化：（手动量化需要硬件性能较好的电脑）
+llama.cpp 是专为CPU优化的高效推理引擎，支持GGUF格式量化模型
+#转换模型为GGUF格式
+# 安装转换工具
+pip install llama-cpp-python
+# 将PyTorch模型转换为GGUF
+python -m llama_cpp.convert \
+  --input-model ./path/to/deepseek-r1.5B \
+  --output-model ./deepseek-r1.5B-Q4.gguf \
+  --quantize q4_0  # 4-bit量化
+
+# 尝试转换与量化
+#下载完整的 PyTorch 格式模型（包含 pytorch_model.bin 和 config.json）
+./deepseek-qwen-1.5B/
+  ├── config.json
+  ├── pytorch_model.bin
+  └── tokenizer.json
+
+  #安装转换工具
+  git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+make  # 编译 llama.cpp
+pip install torch transformers  # 用于转换脚本
+
+#修改转换脚本适配 Qwen 架构
+在 convert.py 中查找层名称匹配逻辑
+if "qwen" in model_name.lower():
+    # 替换层名称映射
+    layer_mapping = {
+        "transformer.h.{}.ln_1.weight": "model.layers.{}.input_layernorm.weight",
+        "transformer.h.{}.attn.c_attn.weight": "model.layers.{}.attention.wq.weight",  # 需拆分 Q/K/V
+        # 其他层匹配...
+    }
+
+ #将 PyTorch 模型转换为 FP16 GGUF 格式
+python3 convert.py \
+  --input-dir ./deepseek-qwen-1.5B \
+  --output-dir ./output-gguf \
+  --outtype f16  # 先转未量化格式测试兼容性
+
+  #量化模型：选择 4-bit 量化（平衡速度与精度）
+./quantize ./output-gguf/deepseek-qwen-1.5B.f16.gguf ./output-gguf/deepseek-qwen-1.5B.Q4_K_M.gguf Q4_K_M
+
+#运行测试
+./main -m ./output-gguf/deepseek-qwen-1.5B.Q4_K_M.gguf \
+  -n 128  # 生成128个token
+  -p "你好，请介绍一下上海。"
+
+
+# 使用llama推理
+  from llama_cpp import Llama
+
+#加载量化模型
+llm = Llama(
+    model_path="./deepseek-r1.5B-Q4.gguf",
+    n_threads=8,  # 设置CPU线程数
+    n_gpu_layers=0  # 纯CPU运行
+)
+#生成文本
+output = llm.create_completion("你好，请写一首诗。", max_tokens=100)
+print(output["choices"][0]["text"])
+
+2、使用llama.cpp框架来运行量化后的模型
+使用https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF 里面下载的各种精度的模型
+./llama-simple-chat -m ~/DeepSeek-R1-Distill-Qwen-1.5B/gguf/DeepSeek-R1-Distill-Qwen-1.5B-IQ2_M.gguf
