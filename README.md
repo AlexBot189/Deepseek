@@ -159,3 +159,14 @@ print(output["choices"][0]["text"])
 2、使用llama.cpp框架来运行量化后的模型
 使用https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF 里面下载的各种精度的模型
 ./llama-simple-chat -m ~/DeepSeek-R1-Distill-Qwen-1.5B/gguf/DeepSeek-R1-Distill-Qwen-1.5B-IQ2_M.gguf
+
+
+
+# 各精度模型的性能对比
+![image](https://github.com/user-attachments/assets/9f9d5663-34ac-433a-9888-2faf4ee741ee)
+
+配置	                                模型大小	        内存占用 (CPU)	生成速度 (tokens/s)	输出质量
+原始 PyTorch (FP32)	5.8 GB	            ~6.0 GB	            2-3	                                        高
+GGUF Q4_K_M	            0.9 GB	            ~1.2 GB	            8-12	                                中高
+GGUF Q2_K	                0.5 GB	            ~0.7 GB	            15-20	                                    中
+
